@@ -9,6 +9,11 @@ from transformers import (
 from peft import LoraConfig
 from trl import SFTTrainer
 
+C_CODE_FOLDER = "D:\Work\Research paper\DatasetC"
+ASSEMBLY_FOLDER = "D:\Work\Research paper\DatasetAO3"
+SOURCE_FOLDER = "D:\Work\Research paper\AnghaBench-master"
+
+
 # The model that you want to train from the Hugging Face hub
 model_name = "NousResearch/Llama-2-7b-chat-hf"
 
