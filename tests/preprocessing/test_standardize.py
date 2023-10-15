@@ -1,5 +1,6 @@
-from decompile.preprocessing.standardize import standardize_asm_file
+"""Testing Standardization of Assembly Files"""
 from pathlib import Path
+from decompile.preprocessing.standardize import standardize_asm_file
 
 TESTIING_DATA_FOLDER = Path("tests/tests_data/preprocessing")
 
