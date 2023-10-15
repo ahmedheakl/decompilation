@@ -2,4 +2,3 @@ peft
 accelerate
 transformers
 trl
-pytest
