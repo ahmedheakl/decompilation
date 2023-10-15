@@ -17,14 +17,14 @@ def standardize_asm_file(asm_file_path: str) -> str:
     )  # from objdump output, need to know length to remove it from start of instruction.
     standardized_asm_buffer = ""
 
-    with open(asm_file_path, "r") as file:
+    with open(asm_file_path, "r", encoding="utf-8") as file:
         for line in file.readlines()[4:]:
             line = line.strip()
 
             if not line or line.startswith(section_start_text):
                 continue
 
-            # TODO: Use a regex to find "<section_name>:" or just detect them after section_start_text
+            # TODO: Use a regex to find "<section_name>:" or detect prev text
             if line.startswith("<"):
                 standardized_asm_buffer += line + "\n"
 
