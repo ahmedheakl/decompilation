@@ -36,6 +36,11 @@ def standardize_asm_file(asm_file_path: str) -> str:
                     continue
                 line = re.sub(r"\s+", " ", line).strip()  # remove extra spaces
                 line = " , ".join(line.split(","))  # add space before and after comma
-                standardized_asm_buffer += line + " ;" + "\n"
+                if "#" in line:
+                    # add a ; before the hash to make it a comment
+                    line = re.sub("#", "; #", line)
+                else:
+                    line = line + " ;"
+                standardized_asm_buffer += line + "\n"
 
     return standardized_asm_buffer
