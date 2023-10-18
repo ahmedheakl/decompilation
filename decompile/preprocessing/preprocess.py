@@ -2,45 +2,70 @@
 import os
 import subprocess
 import shutil
+from multiprocessing import Pool
 
-C_CODE_FOLDER = "D:\Work\Research paper\DatasetC"
-ASSEMBLY_FOLDER = "D:\Work\Research paper\DatasetAO3"
-SOURCE_FOLDER = "D:\Work\Research paper\AnghaBench-master"
+folder_path = "/home/mohanned/Work/DataC"
+output_folder = "/home/mohanned/Work/Binary"
 
-
-def compile_to_assembly(c_code_file: str, output_file: str) -> bool:
-    """Compile C code to assembly.
-
-    Args:
-        c_code_file_path (str): Path to C code file
-        output_file_path (str): Path to C code file
-
-    Returns:
-        bool: Indicates whether the compilation was successful
+def compile_to_binary(file_path: str) -> None:
     """
+        Converting C code files into binary files
+        
+        Args:
+        file_path (str): It's the path for the C code file being compiled
+    """
+    binary_file = os.path.splitext(file_path)[0]
+    binary_file = binary_file[::-1]
+    EDIT = ""
+    for c in binary_file:
+        if(c == '/'):
+            break
+        EDIT += c
+    EDIT = EDIT[::-1]
+    out_file = output_folder + "/" + EDIT + ".out"
+
+    assemble_command = f"gcc -c {file_path} -o {out_file}"
+
     try:
-        subprocess.run(["gcc", "-S", "-O3", c_code_file, "-o", output_file], check=True)
-        return True
-    except subprocess.CalledProcessError:
-        return False
+        subprocess.run(assemble_command, check=True, shell=True)
+        print(f"Assembly successful. Binary machine code saved as {out_file}")
+    except subprocess.CalledProcessError as e:
+        print(f"Assembly failed with error:\n{e}")
+
+def disassemble_to_assembly(binary_file: str) -> None:
+    """
+        Disassembling binary files
+        
+        Args:
+        file_path (str): It's the path for the binary file being disassembled
+    """
+    assembly_file = os.path.splitext(binary_file)[0] + ".s"
+    with open(assembly_file, "w") as assembly_file:
+        subprocess.run(["objdump", "-d", "-M", "att", "-M", "x86-64", "--no-addresses", binary_file], stdout=assembly_file)
 
 
-def compile_folder() -> None:
-    """Compile C code"""
-    if not os.path.exists(ASSEMBLY_FOLDER):
-        os.makedirs(ASSEMBLY_FOLDER)
-    for root, _, files in os.walk(C_CODE_FOLDER):
-        for file in files:
-            if not file.endswith(".c"):
-                continue
+def preprcoess(number_of_samples):
+    """
+        The process of converting C code files into specific artichture of assembly
 
-            c_code_file = os.path.join(root, file)
-            assembly_file = os.path.join(
-                ASSEMBLY_FOLDER, os.path.splitext(file)[0] + ".s"
-            )
+        Args:
+            number_of_samples (int): It's the number of data samples that will used for training 
+    """
 
-            if not compile_to_assembly(c_code_file, assembly_file):
-                print(f"Something went wrong with {c_code_file}")
+    c_files = []
+    for filename in os.listdir(folder_path):
+        if len(c_files) == number_of_samples:
+            break
+
+        if filename.endswith(".c"):
+            c_files.append(os.path.join(folder_path, filename))
+
+    with Pool(processes=4) as pool:
+        pool.map(compile_to_binary, c_files)
+
+    binary_files = [os.path.join(output_folder, os.path.basename(os.path.splitext(file)[0]) + ".out") for file in c_files]
+    with Pool(processes=4) as pool:
+        pool.map(disassemble_to_assembly, binary_files)
 
 
 def collect_c_files(source_folder: str, output_dir: str) -> None:
