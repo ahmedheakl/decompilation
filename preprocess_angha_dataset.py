@@ -6,8 +6,8 @@ from decompile.preprocessing import preprocess
 anghaBench_dataset_folder = Path("/home/mohanned/Work/AnghaBench")
 input_folder = Path("/home/mohanned/Work/DataC")
 output_folder = Path("/home/mohanned/Work/Binary")
-architecture = "x86-64"
-syntax_type = "att"
+ARCHITECTURE = "x86-64"
+SYNTAX_TYPE = "att"
 
 
 def main() -> None:
@@ -27,8 +27,8 @@ def main() -> None:
         output_folder.as_posix(),
         number_of_samples=1000,
         number_of_processor_cores=4,
-        syntax_for_assembly_language=syntax_type,
-        archticture=architecture,
+        syntax_for_assembly_language=SYNTAX_TYPE,
+        archticture=ARCHITECTURE,
     )
 
 
