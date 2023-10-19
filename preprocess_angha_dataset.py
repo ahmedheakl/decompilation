@@ -1,17 +1,20 @@
-"""Main script for preprocessing the anghadataset"""
+#!/usr/bin/env python3
+"""Main script for preprocessing the anghadataset. Must be run from the root dir of the project"""
+import sys
 from pathlib import Path
 
-from decompile.preprocessing import preprocess
+from decompile.preprocessing.preprocess import preprocess
+from decompile.preprocessing.preprocess import collect_c_files
 
 DATASET_NAME = "AnghaBench"
 anghaBench_dataset_folder = Path(f"./datasets/raw/{DATASET_NAME}")
-input_folder = Path(f"./datasets/formatted/{DATASET_NAME}/input")
-output_folder = Path(f"./datasets/formatted/{DATASET_NAME}/output")
+input_folder = Path("./datasets/formatted/input")
+output_folder = Path("./datasets/formatted/output")
 ARCHITECTURE = "x86-64"
 SYNTAX_TYPE = "att"
 
 
-def main() -> None:
+def main() -> int:
     """Main entry point for preprocessing the anghadataset"""
     if not anghaBench_dataset_folder.exists():
         raise FileNotFoundError(
@@ -23,19 +26,21 @@ def main() -> None:
     if not output_folder.exists():
         output_folder.mkdir(parents=True)
 
-    preprocess.collect_c_files(
+    collect_c_files(
         str(anghaBench_dataset_folder),
         str(input_folder),
     )
-    preprocess.preprocess(
+    print("Finished collecting c files.")
+    preprocess(
         str(input_folder),
         str(output_folder),
         number_of_samples=1000,
         number_of_processor_cores=4,
         syntax_for_assembly_language=SYNTAX_TYPE,
-        archticture=ARCHITECTURE,
+        architecture=ARCHITECTURE,
     )
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
