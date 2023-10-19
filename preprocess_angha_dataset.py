@@ -5,11 +5,13 @@ from pathlib import Path
 
 from decompile.preprocessing.preprocess import preprocess
 from decompile.preprocessing.preprocess import collect_c_files
+from decompile.preprocessing.preprocess import create_jsonl_and_standardize
 
 DATASET_NAME = "AnghaBench"
 anghaBench_dataset_folder = Path(f"./datasets/raw/{DATASET_NAME}")
 input_folder = Path("./datasets/formatted/input")
 output_folder = Path("./datasets/formatted/output")
+jsonl_file = Path("./datasets/formatted/decompile.jsonl")
 ARCHITECTURE = "x86-64"
 SYNTAX_TYPE = "att"
 
@@ -31,6 +33,7 @@ def main() -> int:
         str(input_folder),
     )
     print("Finished collecting c files.")
+
     preprocess(
         str(input_folder),
         str(output_folder),
@@ -39,6 +42,10 @@ def main() -> int:
         syntax_for_assembly_language=SYNTAX_TYPE,
         architecture=ARCHITECTURE,
     )
+    print("Finished dissembling.")
+    create_jsonl_and_standardize(output_folder, input_folder, jsonl_file)
+    print("Finished creating jsonl file.")
+    print("Finished preprocessing angha dataset.")
     return 0
 
 

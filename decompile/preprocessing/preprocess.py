@@ -5,6 +5,11 @@ import subprocess
 import shutil
 from functools import partial
 from multiprocessing import Pool
+import json
+from pathlib import Path
+from decompile.preprocessing.standardize import standardize_asm_file
+
+SAMPLE_C_FILES_NUM = 1000
 
 
 def compile_to_binary(c_file_path: str, output_folder: str) -> None:
@@ -68,9 +73,10 @@ def disassemble_to_assembly(
                 stdout=assembly_file,
                 check=True,
             )
+            os.remove(binary_file)
     except subprocess.CalledProcessError as e:
         print(
-            f"Compilation failed with error:\n{e} and "
+            f"Dissembling failed with error:\n{e} and "
             + "the error is associated with the following output file {assembly_file}"
         )
 
@@ -87,7 +93,7 @@ def preprocess(
     assembly using multiporocessing module.
 
     Args:
-        input_folder (str): It's the path for the input folder for the C code files
+        input_folder (str): Path for the input folder for .c files.
         output_folder (str): It's the path for the output folder for the preprocessing
         number_of_samples (int): It's the number of data samples that will used for training
         number_of_processor_cores (int): It's the number of cores to be used by the multiprocessing
@@ -99,10 +105,7 @@ def preprocess(
     """
 
     c_files: List[str] = []
-    for filename in os.listdir(input_folder):
-        if len(c_files) == number_of_samples:
-            break
-
+    for filename in os.listdir(input_folder)[:number_of_samples]:
         if filename.endswith(".c"):
             c_files.append(os.path.join(input_folder, filename))
 
@@ -136,9 +139,13 @@ def collect_c_files(source_folder_path: str, output_dir_path: str) -> None:
         source_folder_path (str): Folder containing all source files
         output_dir_path (str): Output folder for binary code
     """
-
+    # FIXME: The global variable is not a good idea.
+    # FIXME: The actual number of files found is 900 not 1000 like the global variable.
+    global SAMPLE_C_FILES_NUM
     os.makedirs(output_dir_path, exist_ok=True)
     for entry in os.scandir(source_folder_path):
+        if SAMPLE_C_FILES_NUM == 0:
+            break
         if entry.name in (".", ".."):
             continue
         full_path = os.path.join(source_folder_path, entry.name)
@@ -147,4 +154,32 @@ def collect_c_files(source_folder_path: str, output_dir_path: str) -> None:
             collect_c_files(full_path, output_dir_path)
         elif entry.name.endswith(".c"):
             output_file_path = os.path.join(output_dir_path, entry.name)
-            shutil.move(full_path, output_file_path)
+            shutil.copyfile(full_path, output_file_path)
+            SAMPLE_C_FILES_NUM -= 1
+
+
+def create_jsonl_and_standardize(
+    assembly_folder_path: Path,
+    source_folder_path: Path,
+    jsonl_file_path: Path,
+) -> None:
+    """Creates jsonl file after standardizing the assembly files. The jsonl
+    file is then used to create the dataset using load_dataset function.
+
+    Args:
+        assembly_folder_path (Path): path to the folder containing assembly files
+        source_folder_path (Path): path to the folder containing source files
+        jsonl_file_path (Path): path to the jsonl file
+    """
+    # template_dict = {"input": "", "output": ""}
+    # loop over all files in the source_folder_path
+    data_buffer = []
+    for source_file in source_folder_path.iterdir():
+        input_str = source_file.read_text(encoding="utf-8")
+        assembly_file_path = Path(source_file.stem + ".s")
+        assembly_file_path = assembly_folder_path / assembly_file_path
+        output_str = standardize_asm_file(str(assembly_file_path))
+        data_buffer.append({"input": input_str, "output": output_str})
+    with jsonl_file_path.open(mode="w", encoding="utf-8") as jsonl_file:
+        for entry in data_buffer:
+            jsonl_file.write(json.dumps(entry) + "\n")
