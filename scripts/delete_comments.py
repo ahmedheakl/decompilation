@@ -1,5 +1,5 @@
 """This module was specefically made to delete the comments in the source cpp files
- of the geeks for geeks dataset"""
+ of the geeks for geeks dataset. THIS SCRIPT MUST FOLLOW delete_comments.py for correct use."""
 import sys
 from pathlib import Path
 
