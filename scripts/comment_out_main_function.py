@@ -13,6 +13,7 @@ def main() -> int:
         with file_path.open("r", encoding="utf-8") as source_file:
             lines = source_file.read()
             lines = lines.replace("int main()", "int main(){return 0;}\n/*int main()")
+            lines = lines + "*/"
         if lines is not None:
             with file_path.open("w", encoding="utf-8") as source_file:
                 source_file.write(lines)
