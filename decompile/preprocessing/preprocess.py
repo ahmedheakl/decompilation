@@ -12,23 +12,16 @@ from decompile.preprocessing.standardize import standardize_asm_file
 SAMPLE_C_FILES_NUM = 1000
 
 
-def compile_to_binary(c_file_path: str, output_folder: str) -> None:
+def compile_to_binary(c_file_path: Path | str, output_folder: str) -> None:
     """Converting C code files into binary files
 
     Args:
         c_file_path (str): Path for .c source file.
         output_folder (str): Path for output of the compilation.
     """
-
-    binary_file = os.path.splitext(c_file_path)[0]
-    binary_file = binary_file[::-1]
-    edit = ""
-    for c in binary_file:
-        if c == "/":
-            break
-        edit += c
-    edit = edit[::-1]
-    out_file = output_folder + "/" + edit + ".out"
+    c_file_path = Path(c_file_path)
+    file_name_without_ext = c_file_path.stem
+    out_file = output_folder + "/" + str(file_name_without_ext) + ".out"
 
     assemble_command = f"gcc -c {c_file_path} -o {out_file}"
 
