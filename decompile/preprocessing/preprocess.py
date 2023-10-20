@@ -171,14 +171,13 @@ def create_jsonl_and_standardize(
         source_folder_path (Path): path to the folder containing source files
         jsonl_file_path (Path): path to the jsonl file
     """
-    # template_dict = {"input": "", "output": ""}
     # loop over all files in the source_folder_path
     data_buffer = []
     for source_file in source_folder_path.iterdir():
-        input_str = source_file.read_text(encoding="utf-8")
+        output_str = source_file.read_text(encoding="utf-8")
         assembly_file_path = Path(source_file.stem + ".s")
         assembly_file_path = assembly_folder_path / assembly_file_path
-        output_str = standardize_asm_file(str(assembly_file_path))
+        input_str = standardize_asm_file(str(assembly_file_path))
         data_buffer.append({"input": input_str, "output": output_str})
     with jsonl_file_path.open(mode="w", encoding="utf-8") as jsonl_file:
         for entry in data_buffer:
