@@ -15,7 +15,7 @@ def standardize_asm_file(asm_file_path: str) -> str:
     length_memory_address_format_example = len(
         "48 c7 45 f8 00 00 00    "
     )  # from objdump output, need to know length to remove it from start of instruction.
-    standardized_asm_buffer = ""
+    standardized_asm_buffer = []
 
     with open(asm_file_path, "r", encoding="utf-8") as file:
         for line in file.readlines()[4:]:
@@ -26,7 +26,7 @@ def standardize_asm_file(asm_file_path: str) -> str:
 
             # TODO: Use a regex to find "<section_name>:" or detect prev text
             if line.startswith("<"):
-                standardized_asm_buffer += line + "\n"
+                standardized_asm_buffer.append(line + "\n")
 
             else:
                 line = line[
@@ -41,6 +41,6 @@ def standardize_asm_file(asm_file_path: str) -> str:
                     line = re.sub("#", "; #", line)
                 else:
                     line = line + " ;"
-                standardized_asm_buffer += line + "\n"
-
-    return standardized_asm_buffer
+                standardized_asm_buffer.append(line + "\n")
+    ret = "".join(standardized_asm_buffer)
+    return ret

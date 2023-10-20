@@ -1,36 +1,55 @@
-"""Main script for preprocessing the anghadataset"""
+#!/usr/bin/env python3
+"""Main script for preprocessing the anghadataset. Must be run from the root dir of the project"""
+import sys
 from pathlib import Path
 
-from decompile.preprocessing import preprocess
+from decompile.preprocessing.preprocess import (
+    preprocess,
+    collect_c_files,
+    create_jsonl_and_standardize,
+)
 
-anghaBench_dataset_folder = Path("/home/mohanned/Work/AnghaBench")
-input_folder = Path("/home/mohanned/Work/DataC")
-output_folder = Path("/home/mohanned/Work/Binary")
-architecture = "x86-64"
-syntax_type = "att"
+DATASET_NAME = "AnghaBench"
+anghaBench_dataset_folder = Path(f"./datasets/raw/{DATASET_NAME}")
+input_folder = Path("./datasets/formatted/input")
+output_folder = Path("./datasets/formatted/output")
+jsonl_file = Path("./datasets/formatted/decompile.jsonl")
+ARCHITECTURE = "x86-64"
+SYNTAX_TYPE = "att"
 
 
-def main() -> None:
+def main() -> int:
     """Main entry point for preprocessing the anghadataset"""
+    if not anghaBench_dataset_folder.exists():
+        raise FileNotFoundError(
+            f"AngaBench dataset folder not found at {anghaBench_dataset_folder}"
+        )
     if not input_folder.exists():
-        input_folder.mkdir(parents=True, exist_ok=True)
+        input_folder.mkdir(parents=True)
 
     if not output_folder.exists():
-        output_folder.mkdir(parents=True, exist_ok=True)
+        output_folder.mkdir(parents=True)
 
-    preprocess.collect_c_files(
-        anghaBench_dataset_folder.as_posix(),
-        input_folder.as_posix(),
+    collect_c_files(
+        str(anghaBench_dataset_folder),
+        str(input_folder),
     )
-    preprocess.preprocess(
-        input_folder.as_posix(),
-        output_folder.as_posix(),
+    print("Finished collecting c files.")
+
+    preprocess(
+        str(input_folder),
+        str(output_folder),
         number_of_samples=1000,
         number_of_processor_cores=4,
-        syntax_for_assembly_language=syntax_type,
-        archticture=architecture,
+        syntax_for_assembly_language=SYNTAX_TYPE,
+        architecture=ARCHITECTURE,
     )
+    print("Finished dissembling.")
+    create_jsonl_and_standardize(output_folder, input_folder, jsonl_file)
+    print("Finished creating jsonl file.")
+    print("Finished preprocessing angha dataset.")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
