@@ -3,9 +3,11 @@
 import sys
 from pathlib import Path
 
-from decompile.preprocessing.preprocess import preprocess
-from decompile.preprocessing.preprocess import collect_c_files
-from decompile.preprocessing.preprocess import create_jsonl_and_standardize
+from decompile.preprocessing.preprocess import (
+    preprocess,
+    collect_c_files,
+    create_jsonl_and_standardize,
+)
 
 DATASET_NAME = "AnghaBench"
 anghaBench_dataset_folder = Path(f"./datasets/raw/{DATASET_NAME}")
