@@ -1,4 +1,5 @@
-"""This script will comment out the main function in all the cpp files in the geeks_for_geeks dataset except for return 0."""
+"""This script will comment out the main function in all the cpp files
+ in the geeks_for_geeks dataset except for return 0."""
 from pathlib import Path
 import sys
 
