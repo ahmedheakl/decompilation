@@ -1,175 +1,213 @@
-"""Process the C code"""
-from typing import List
+"""Dataset preprocessing moduel. Takes care of collecting, and compiling source files,
+ and disassembling binaries."""
 import os
 import subprocess
 import shutil
-from functools import partial
-from multiprocessing import Pool
 import json
 from pathlib import Path
+from typing import List
+from typing import Union
+from functools import partial
+from multiprocessing import Pool
+
 from decompile.preprocessing.standardize import standardize_asm_file
 
-sample_files_num = 1000
 
+class DatasetJsonl:
+    """Class for representing datasets and creating jsonl files
 
-def compile_to_binary(c_file_path: Path | str, output_folder: Path | str) -> None:
-    """Converting C code files into binary files
-
-    Args:
-        c_file_path (str): Path for .c source file.
-        output_folder (str): Path for output of the compilation.
-    """
-    c_file_path = Path(c_file_path)
-    file_name_without_ext = c_file_path.stem
-    out_file = str(output_folder) + "/" + str(file_name_without_ext) + ".o"
-    compiler_command = "gcc -c" if c_file_path.suffix == ".c" else "g++ -c"
-    assemble_command = f"{compiler_command} {c_file_path} -o {out_file}"
-
-    try:
-        subprocess.run(assemble_command, check=True, shell=True)
-    except subprocess.CalledProcessError as e:
-        print(
-            f"Compilation failed with error:\n{e} and "
-            + f"the error is associated with the following output file {out_file}"
-        )
-
-
-def disassemble_to_assembly(
-    binary_file: str,
-    syntax_for_assembly_language: str,
-    architecture: str,
-) -> None:
-    """Disassembling binary files into assembly code files
-
-    Args:
-        binary_file (str): It's the path for the binary file being disassembled
-        syntax_for_assembly_language (str): This will be used in the objdump command to specify the
-        assembly langauge syntax for the assembly output files
-        architecture (str): This will specify the architecture that's we're
-        working with in the output files
+    Attributes:
+        dataset_path (Union[Path, str]): Path for the dataset folder.
+        num_samples (int): Number of samples to be used for training.
+        asm_syntax_type (str): Syntax type for Generated asm files.
+        architecture (str): Architecture type for asm output files.
     """
 
-    assembly_file_path: str = os.path.splitext(binary_file)[0] + ".s"
-    try:
-        with open(assembly_file_path, "w", encoding="utf-8") as assembly_file:
-            subprocess.run(
-                [
-                    "objdump",
-                    "-d",
-                    "-M",
-                    syntax_for_assembly_language,
-                    "-M",
-                    architecture,
-                    "--no-addresses",
-                    binary_file,
-                ],
-                stdout=assembly_file,
-                check=True,
+    compilation_command_dict = {".c": "gcc -c", ".cpp": "g++ -c"}
+
+    def __init__(
+        self,
+        raw_dataset_path: Union[Path, str],
+        num_samples: int,
+        asm_syntax_type: str = "att",
+        architecture: str = "x86-64",
+    ) -> None:
+        self.raw_dataset_path = Path(raw_dataset_path)
+        self.num_samples = num_samples
+        self.asm_syntax_type = asm_syntax_type
+        self.architecture = architecture
+
+    @staticmethod
+    def _compile_to_binary(
+        source_file_path: Union[Path, str], output_folder: Union[Path, str]
+    ) -> None:
+        """Converts source files into binary files
+
+        Args:
+            source_file_path (str): Path for .c source file.
+            output_folder (str): Path for compilation output.
+        """
+        source_file_path = Path(source_file_path)
+        output_folder = Path(output_folder)
+        file_name_without_ext = source_file_path.stem
+        out_file = (output_folder / file_name_without_ext).with_suffix(".o")
+        compiler_command = DatasetJsonl.compilation_command_dict[
+            source_file_path.suffix
+        ]
+        assemble_command = f"{compiler_command} {source_file_path} -o {out_file}"
+
+        try:
+            subprocess.run(assemble_command, check=True, shell=True)
+        except subprocess.CalledProcessError as e:
+            print(
+                f"Compilation failed with error:\n{e} and "
+                + f"the error is associated with the following output file {out_file}"
             )
-            os.remove(binary_file)
-    except subprocess.CalledProcessError as e:
-        print(
-            f"Dissembling failed with error:\n{e} and "
-            + f"the error is associated with the following output file {assembly_file_path}"
+
+    @staticmethod
+    def _disassemble_to_assembly(
+        binary_file: Union[Path, str],
+        syntax_for_assembly_language: str,
+        architecture: str,
+    ) -> None:
+        """Disassembles binary files into assembly(.s) files in the same folder.
+
+        Args:
+            binary_file (Union[Path, str]): Disassembled binary file path.
+            syntax_for_assembly_language (str): syntax type for the assembly output files.
+            architecture (str): architecure type for assembly output files.
+        """
+        binary_file = Path(binary_file)
+        assembly_file_path = binary_file.with_suffix(".s")
+        try:
+            with assembly_file_path.open("w", encoding="utf-8") as assembly_file:
+                subprocess.run(
+                    [
+                        "objdump",
+                        "-d",
+                        "-M",
+                        syntax_for_assembly_language,
+                        "-M",
+                        architecture,
+                        "--no-addresses",
+                        binary_file,
+                    ],
+                    stdout=assembly_file,
+                    check=True,
+                )
+                os.remove(binary_file)
+        except subprocess.CalledProcessError as e:
+            print(
+                f"Dissembling failed with error:\n{e} and "
+                + f"the error is associated with the following output file {assembly_file_path}"
+            )
+
+    def preprocess(
+        self,
+        input_folder: Union[Path, str],
+        output_folder: Union[Path, str],
+        nproc: int,
+    ) -> None:
+        """Converts source files into assembly using multiprocessing. First
+        compiles source using corresponding language compiler. Then disassembles
+        binaries using objdump.
+
+        Args:
+            input_folder (str): Path for the folder containing source files.
+            output_folder (str): Path for the folder to deposit the binaries then assembly files.
+            nproc (int): Number of processes to use for multiprocessing.
+        """
+        input_folder = Path(input_folder)
+        output_folder = Path(output_folder)
+        source_files: List[str] = []
+        for filename in os.listdir(input_folder)[: self.num_samples]:
+            if os.path.splitext(filename)[1] in DatasetJsonl.compilation_command_dict:
+                source_files.append(os.path.join(input_folder, filename))
+
+        partial_compile = partial(
+            DatasetJsonl._compile_to_binary, output_folder=output_folder
         )
+        with Pool(processes=nproc) as pool:
+            pool.map(partial_compile, source_files)
 
+        binary_files = [
+            os.path.join(
+                output_folder, os.path.basename(os.path.splitext(file)[0]) + ".o"
+            )
+            for file in source_files
+        ]
 
-def preprocess(
-    input_folder: str,
-    output_folder: str,
-    number_of_samples: int,
-    number_of_processor_cores: int,
-    syntax_for_assembly_language: str,
-    architecture: str,
-) -> None:
-    """Converts .c source files into specific artichture of
-    assembly using multiporocessing module.
+        partial_disassemble = partial(
+            DatasetJsonl._disassemble_to_assembly,
+            syntax_for_assembly_language=self.asm_syntax_type,
+            architecture=self.architecture,
+        )
+        with Pool(processes=nproc) as pool:
+            pool.map(partial_disassemble, binary_files)
 
-    Args:
-        input_folder (str): Path for the input folder for .c files.
-        output_folder (str): It's the path for the output folder for the preprocessing
-        number_of_samples (int): It's the number of data samples that will used for training
-        number_of_processor_cores (int): It's the number of cores to be used by the multiprocessing
-        module in python to optimize the exection time of the function
-        syntax_for_assembly_language (str): This will be used in the objdump command to specify the
-        assembly langauge syntax for the assembly output files
-        architecture (str): This will specify the architecture that's
-        we're working with in the output files
-    """
+    def collect_source_files(
+        self,
+        output_folder_path: Union[Path, str],
+    ) -> None:
+        """Collect all source files into one folder.
 
-    source_files: List[str] = []
-    for filename in os.listdir(input_folder)[:number_of_samples]:
-        if filename.endswith(".c") or filename.endswith(".cpp"):
-            source_files.append(os.path.join(input_folder, filename))
+        Args:
+            output_folder_path (Union[Path, str]): Folder for depositing collected source files.
+        """
+        sample_files_num = self.num_samples
 
-    partial_compile = partial(compile_to_binary, output_folder=output_folder)
-    with Pool(processes=number_of_processor_cores) as pool:
-        pool.map(partial_compile, source_files)
+        def _collect_source_files(source_folder_path: Union[Path, str]) -> None:
+            """DFS search for collecting source files from source_folder_path
+            and copying them to output_folder_path.
 
-    binary_files = [
-        os.path.join(output_folder, os.path.basename(os.path.splitext(file)[0]) + ".o")
-        for file in source_files
-    ]
+            Args:
+                source_folder_path (Union[Path, str]): Folder containing all source files.
+                output_folder_path (Union[Path, str]): Folder for depositing collected source files.
+            """
+            # FIXME: The global variable is not a good idea.
+            # FIXME: The actual number of files found is 900 not 1000 like the global variable.
+            nonlocal sample_files_num
+            nonlocal output_folder_path
+            for entry in os.scandir(source_folder_path):
+                if sample_files_num == 0:
+                    break
+                if entry.name in (".", ".."):
+                    continue
+                full_path = os.path.join(source_folder_path, entry.name)
 
-    partial_disassemble = partial(
-        disassemble_to_assembly,
-        syntax_for_assembly_language=syntax_for_assembly_language,
-        architecture=architecture,
-    )
-    with Pool(processes=number_of_processor_cores) as pool:
-        pool.map(partial_disassemble, binary_files)
+                if entry.is_dir():
+                    _collect_source_files(full_path)
+                elif entry.name.endswith(".c") or entry.name.endswith(".cpp"):
+                    output_file_path = os.path.join(output_folder_path, entry.name)
+                    shutil.copyfile(full_path, output_file_path)
+                    sample_files_num -= 1
 
+        _collect_source_files(self.raw_dataset_path)
 
-def collect_c_files(source_folder_path: str, output_dir_path: str) -> None:
-    """Collect all C files into one folder. This helps to make
-        the compilation process easier by avoiding recursively calling the
-        functions inside each subdirectory of a directory to access all the
-        C code files of the dataset of AngaBench.
+    @staticmethod
+    def create_jsonl_and_standardize(
+        assembly_folder_path: Union[Path, str],
+        source_folder_path: Union[Path, str],
+        jsonl_file_path: Union[Path, str],
+    ) -> None:
+        """Creates jsonl file after standardizing the assembly files. The jsonl
+        file is then used to create the dataset using load_dataset function.
 
-    Args:
-        source_folder_path (str): Folder containing all source files
-        output_dir_path (str): Output folder for binary code
-    """
-    # FIXME: The global variable is not a good idea.
-    # FIXME: The actual number of files found is 900 not 1000 like the global variable.
-    global sample_files_num
-    os.makedirs(output_dir_path, exist_ok=True)
-    for entry in os.scandir(source_folder_path):
-        if sample_files_num == 0:
-            break
-        if entry.name in (".", ".."):
-            continue
-        full_path = os.path.join(source_folder_path, entry.name)
-
-        if entry.is_dir():
-            collect_c_files(full_path, output_dir_path)
-        elif entry.name.endswith(".c") or entry.name.endswith(".cpp"):
-            output_file_path = os.path.join(output_dir_path, entry.name)
-            shutil.copyfile(full_path, output_file_path)
-            sample_files_num -= 1
-
-
-def create_jsonl_and_standardize(
-    assembly_folder_path: Path,
-    source_folder_path: Path,
-    jsonl_file_path: Path,
-) -> None:
-    """Creates jsonl file after standardizing the assembly files. The jsonl
-    file is then used to create the dataset using load_dataset function.
-
-    Args:
-        assembly_folder_path (Path): path to the folder containing assembly files
-        source_folder_path (Path): path to the folder containing source files
-        jsonl_file_path (Path): path to the jsonl file
-    """
-    # loop over all files in the source_folder_path
-    data_buffer = []
-    for source_file in source_folder_path.iterdir():
-        output_str = source_file.read_text(encoding="utf-8")
-        assembly_file_path = Path(source_file.stem + ".s")
-        assembly_file_path = assembly_folder_path / assembly_file_path
-        input_str = standardize_asm_file(assembly_file_path)
-        data_buffer.append({"input": input_str, "output": output_str})
-    with jsonl_file_path.open(mode="w", encoding="utf-8") as jsonl_file:
-        for entry in data_buffer:
-            jsonl_file.write(json.dumps(entry) + "\n")
+        Args:
+            assembly_folder_path (Path): Path to the folder containing assembly files.
+            source_folder_path (Path): Path to the folder containing source files.
+            jsonl_file_path (Path): Path to the jsonl file.
+        """
+        assembly_folder_path = Path(assembly_folder_path)
+        source_folder_path = Path(source_folder_path)
+        jsonl_file_path = Path(jsonl_file_path)
+        data_buffer = []
+        for source_file in source_folder_path.iterdir():
+            output_str = source_file.read_text(encoding="utf-8")
+            assembly_file_path = Path(source_file.stem + ".s")
+            assembly_file_path = assembly_folder_path / assembly_file_path
+            input_str = standardize_asm_file(assembly_file_path)
+            data_buffer.append({"input": input_str, "output": output_str})
+        with jsonl_file_path.open(mode="w", encoding="utf-8") as jsonl_file:
+            for entry in data_buffer:
+                jsonl_file.write(json.dumps(entry) + "\n")
