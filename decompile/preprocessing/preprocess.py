@@ -9,35 +9,28 @@ import json
 from pathlib import Path
 from decompile.preprocessing.standardize import standardize_asm_file
 
-SAMPLE_C_FILES_NUM = 1000
+sample_files_num = 1000
 
 
-def compile_to_binary(c_file_path: str, output_folder: str) -> None:
+def compile_to_binary(c_file_path: Path | str, output_folder: Path | str) -> None:
     """Converting C code files into binary files
 
     Args:
         c_file_path (str): Path for .c source file.
         output_folder (str): Path for output of the compilation.
     """
-
-    binary_file = os.path.splitext(c_file_path)[0]
-    binary_file = binary_file[::-1]
-    edit = ""
-    for c in binary_file:
-        if c == "/":
-            break
-        edit += c
-    edit = edit[::-1]
-    out_file = output_folder + "/" + edit + ".out"
-
-    assemble_command = f"gcc -c {c_file_path} -o {out_file}"
+    c_file_path = Path(c_file_path)
+    file_name_without_ext = c_file_path.stem
+    out_file = str(output_folder) + "/" + str(file_name_without_ext) + ".o"
+    compiler_command = "gcc -c" if c_file_path.suffix == ".c" else "g++ -c"
+    assemble_command = f"{compiler_command} {c_file_path} -o {out_file}"
 
     try:
         subprocess.run(assemble_command, check=True, shell=True)
     except subprocess.CalledProcessError as e:
         print(
             f"Compilation failed with error:\n{e} and "
-            + "the error is associated with the following output file {out_file}"
+            + f"the error is associated with the following output file {out_file}"
         )
 
 
@@ -77,7 +70,7 @@ def disassemble_to_assembly(
     except subprocess.CalledProcessError as e:
         print(
             f"Dissembling failed with error:\n{e} and "
-            + "the error is associated with the following output file {assembly_file}"
+            + f"the error is associated with the following output file {assembly_file_path}"
         )
 
 
@@ -104,20 +97,18 @@ def preprocess(
         we're working with in the output files
     """
 
-    c_files: List[str] = []
+    source_files: List[str] = []
     for filename in os.listdir(input_folder)[:number_of_samples]:
-        if filename.endswith(".c"):
-            c_files.append(os.path.join(input_folder, filename))
+        if filename.endswith(".c") or filename.endswith(".cpp"):
+            source_files.append(os.path.join(input_folder, filename))
 
     partial_compile = partial(compile_to_binary, output_folder=output_folder)
     with Pool(processes=number_of_processor_cores) as pool:
-        pool.map(partial_compile, c_files)
+        pool.map(partial_compile, source_files)
 
     binary_files = [
-        os.path.join(
-            output_folder, os.path.basename(os.path.splitext(file)[0]) + ".out"
-        )
-        for file in c_files
+        os.path.join(output_folder, os.path.basename(os.path.splitext(file)[0]) + ".o")
+        for file in source_files
     ]
 
     partial_disassemble = partial(
@@ -141,10 +132,10 @@ def collect_c_files(source_folder_path: str, output_dir_path: str) -> None:
     """
     # FIXME: The global variable is not a good idea.
     # FIXME: The actual number of files found is 900 not 1000 like the global variable.
-    global SAMPLE_C_FILES_NUM
+    global sample_files_num
     os.makedirs(output_dir_path, exist_ok=True)
     for entry in os.scandir(source_folder_path):
-        if SAMPLE_C_FILES_NUM == 0:
+        if sample_files_num == 0:
             break
         if entry.name in (".", ".."):
             continue
@@ -152,10 +143,10 @@ def collect_c_files(source_folder_path: str, output_dir_path: str) -> None:
 
         if entry.is_dir():
             collect_c_files(full_path, output_dir_path)
-        elif entry.name.endswith(".c"):
+        elif entry.name.endswith(".c") or entry.name.endswith(".cpp"):
             output_file_path = os.path.join(output_dir_path, entry.name)
             shutil.copyfile(full_path, output_file_path)
-            SAMPLE_C_FILES_NUM -= 1
+            sample_files_num -= 1
 
 
 def create_jsonl_and_standardize(

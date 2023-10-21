@@ -9,21 +9,20 @@ from decompile.preprocessing.preprocess import (
     create_jsonl_and_standardize,
 )
 
-DATASET_NAME = "AnghaBench"
-anghaBench_dataset_folder = Path(f"./datasets/raw/{DATASET_NAME}")
+# TODO: provide the dataset as a cli argument
+DATASET_NAME = "geeks_for_geeks_successful_test_scripts"
+dataset_folder = Path(f"./datasets/raw/{DATASET_NAME}")
 input_folder = Path("./datasets/formatted/input")
 output_folder = Path("./datasets/formatted/output")
-jsonl_file = Path("./datasets/formatted/decompile.jsonl")
+jsonl_file = Path(f"./datasets/formatted/{DATASET_NAME}.jsonl")
 ARCHITECTURE = "x86-64"
 SYNTAX_TYPE = "att"
 
 
 def main() -> int:
-    """Main entry point for preprocessing the anghadataset"""
-    if not anghaBench_dataset_folder.exists():
-        raise FileNotFoundError(
-            f"AngaBench dataset folder not found at {anghaBench_dataset_folder}"
-        )
+    """Main entry point for preprocessing the dataset"""
+    if not dataset_folder.exists():
+        raise FileNotFoundError(f"dataset folder not found at {dataset_folder}")
     if not input_folder.exists():
         input_folder.mkdir(parents=True)
 
@@ -31,10 +30,10 @@ def main() -> int:
         output_folder.mkdir(parents=True)
 
     collect_c_files(
-        str(anghaBench_dataset_folder),
+        str(dataset_folder),
         str(input_folder),
     )
-    print("Finished collecting c files.")
+    print("Finished collecting source files.")
 
     preprocess(
         str(input_folder),
@@ -47,7 +46,7 @@ def main() -> int:
     print("Finished dissembling.")
     create_jsonl_and_standardize(output_folder, input_folder, jsonl_file)
     print("Finished creating jsonl file.")
-    print("Finished preprocessing angha dataset.")
+    print(f"Finished preprocessing {DATASET_NAME}.")
     return 0
 
 
