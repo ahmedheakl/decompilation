@@ -90,7 +90,7 @@ class DatasetJsonl:
                         "-M",
                         architecture,
                         "--no-addresses",
-                        binary_file,
+                        str(binary_file),
                     ],
                     stdout=assembly_file,
                     check=True,
@@ -203,7 +203,7 @@ class DatasetJsonl:
         jsonl_file_path = Path(jsonl_file_path)
         data_buffer = []
         for source_file in source_folder_path.iterdir():
-            output_str = source_file.read_text(encoding="utf-8")
+            output_str = source_file.read_text(encoding="utf-8").strip()
             assembly_file_path = Path(source_file.stem + ".s")
             assembly_file_path = assembly_folder_path / assembly_file_path
             input_str = standardize_asm_file(assembly_file_path)
