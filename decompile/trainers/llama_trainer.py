@@ -58,7 +58,6 @@ class LLaMaOpt:
     logging_steps: int = 25
     max_seq_length: int = 1100
     packing: bool = False
-    device_map: dict = {"": 0}
 
     instruction: str = "Write the cpp code for this assembly."
 
@@ -159,7 +158,7 @@ class LLaMaTrainer(Trainer):
         model = AutoModelForCausalLM.from_pretrained(
             LLaMaOpt.model_name,
             quantization_config=bnb_config,
-            device_map=LLaMaOpt.device_map,
+            device_map={"": 0},
         )
         model.config.use_cache = False
         model.config.pretraining_tp = 1

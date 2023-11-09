@@ -24,8 +24,8 @@ class Trainer(ABC):
             Any: Trained model and the tokenizer.
         """
 
-    @abstractmethod
     @staticmethod
+    @abstractmethod
     def add_template(assembly_text: str) -> str:
         """Add template to assembly.
 
@@ -36,8 +36,8 @@ class Trainer(ABC):
             str: Assembly with template.
         """
 
-    @abstractmethod
     @staticmethod
+    @abstractmethod
     def load_model(model_path: str, tokenizer_path: str) -> Tuple[Any, Any]:
         """Load model from path.
 
