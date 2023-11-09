@@ -1,5 +1,5 @@
 """Trainer implementation for LLaMa model"""
-from typing import Tuple, Dict
+from typing import Tuple, Dict, List
 import os
 import random
 from dataclasses import dataclass
@@ -92,7 +92,7 @@ class LLaMaTrainer(Trainer):
         )
         super().__init__(**kwargs)
 
-    def _split_dataset(self) -> Tuple[DatasetDict, ...]:
+    def _split_dataset(self) -> None:
         """Load dataset from path and split into train and test"""
         _LOG.info("Splitting dataset...")
         with open(self.dataset_path, "r", encoding="utf-8") as f:
@@ -125,7 +125,7 @@ class LLaMaTrainer(Trainer):
         """
         _LOG.info("Mapping dataset...")
 
-        def mapper_handler(examples: Dict[str, str]) -> Dict[str, str]:
+        def mapper_handler(examples: Dict[str, str]) -> Dict[str, List[str]]:
             """Dataset mapper handler"""
             return {
                 LLaMaOpt.dataset_text_field: [

@@ -11,7 +11,7 @@ class Trainer(ABC):
         dataset_path: str,
         input_field_name: str = "input",
         output_field_name: str = "output",
-    ) -> str:
+    ) -> None:
         self.dataset_path = dataset_path
         self.input_field_name = input_field_name
         self.output_field_name = output_field_name
