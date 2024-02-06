@@ -1,10 +1,11 @@
 """Standardize assembly output from objdump command."""
+
 import re
 from pathlib import Path
 from typing import Union
 
 
-def standardize_asm_file(asm_file_path: Union[Path, str]) -> str:
+def standardize_objdump_asm_file(asm_file_path: Union[Path, str]) -> str:
     """Standardize asm file.
 
     Args:
