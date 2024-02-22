@@ -59,6 +59,20 @@ def standardize_gcc_asm_output(asm_file_path: Union[Path, str]) -> str:
         str: standardized asm file as text.
     """
     asm_file_path = Path(asm_file_path)
+    func_pattern = r"[^\n]+:\n[^\n]+:\n\s\.cfi_startproc.+?\.cfi_endproc"
     with asm_file_path.open("r", encoding="utf-8") as file:
         asm = file.read()
-    return asm
+        asm_func = re.search(func_pattern, asm, re.DOTALL)
+        if asm_func is None:
+            print(asm_file_path,asm,sep="\n")
+            raise ValueError("No function found in asm file")
+        asm_func = asm_func.group(0)
+        lines = asm_func.split("\n")
+        buffer = []
+        for line in lines:
+            stripped_line = line.strip()
+            if not stripped_line or stripped_line.startswith(".cfi") or stripped_line.startswith("endbr64"):
+                continue
+            buffer.append(line)
+
+    return "\n".join(buffer)
