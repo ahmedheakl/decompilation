@@ -4,7 +4,6 @@ import re
 from pathlib import Path
 from typing import Union
 
-
 def standardize_objdump_asm_file(asm_file_path: Union[Path, str]) -> str:
     """Standardize asm file.
 
@@ -64,8 +63,8 @@ def standardize_gcc_asm_output(asm_file_path: Union[Path, str]) -> str:
         asm = file.read()
         asm_func = re.search(func_pattern, asm, re.DOTALL)
         if asm_func is None:
-            print(asm_file_path,asm,sep="\n")
-            raise ValueError("No function found in asm file")
+            print(f"Failed to find function in {asm_file_path}")
+            raise ValueError(f"Failed to find function in {asm_file_path}")
         asm_func = asm_func.group(0)
         lines = asm_func.split("\n")
         buffer = []

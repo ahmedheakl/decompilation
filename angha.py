@@ -11,7 +11,7 @@ ASM_CODE_FOLDER = Path("./datasets/formatted/output")
 
 # TODO: provide the dataset as a cli argument
 DATASET_NAME = "AnghaBench"
-NUM_OF_SAMPLES = 10
+NUM_OF_SAMPLES = 1000000
 NUM_CORES = 4
 jsonl_file_path = Path(f"./datasets/formatted/{DATASET_NAME}.jsonl")
 dataset_folder = Path(f"./datasets/raw/{DATASET_NAME}")
@@ -34,7 +34,7 @@ def main() -> int:
 
     dataset.compile_source_folder_and_generate_assembly(nproc=NUM_CORES)
     print("Finished dissembling.")
-
+    
     dataset.save_as_jsonl_and_standardize(jsonl_file_path)
     print("Finished creating jsonl file.")
 

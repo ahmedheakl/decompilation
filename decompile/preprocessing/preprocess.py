@@ -135,9 +135,17 @@ def create_jsonl_and_standardize(
     data_buffer = []
     for source_file in source_folder_path.iterdir():
         output_str = source_file.read_text(encoding="utf-8").strip()
-        assembly_file_path = Path(source_file.stem + ".s")
-        assembly_file_path = assembly_folder_path / assembly_file_path
-        input_str = standardization_function(assembly_file_path)
+        assembly_file_name = source_file.with_suffix(".s").name
+        assembly_file_path = assembly_folder_path / assembly_file_name
+        try:
+            input_str = standardization_function(assembly_file_path)
+        #catching FileNotFoundError and ValueError
+        except (FileNotFoundError):
+            print(f"Failed to find {assembly_file_path}")
+            continue
+        except (ValueError):
+            print(f"Failed to find function in {assembly_file_path}")
+            continue
         data_buffer.append(
             {
                 "input": input_str,
@@ -214,13 +222,15 @@ def remove_comments_empty_includes_and_main(
             # skip the first 8 lines of the file
             file_string = "\n".join(file_string.split("\n")[8:])
             # replace the removed typedefs
-            file_string = re.sub(r"NULL", "((void*)0)", file_string)
-            file_string = re.sub(r"false", "0", file_string)
-            file_string = re.sub(r"true", "1", file_string)
-            file_string = re.sub(r"(size_t|uintptr_t)", "unsigned long", file_string)
-            file_string = re.sub(r"(intptr_t|scalar_t__)", "long", file_string)
-            file_string = re.sub(r"bool", "int", file_string)
-            file_string = re.sub(r"__attribute__\(\(used\)\) ", "", file_string)
+            file_string = re.sub(r"\bNULL\b", "((void*)0)", file_string)
+            file_string = re.sub(r"\bfalse\b", "0", file_string)
+            file_string = re.sub(r"\btrue\b", "1", file_string)
+            file_string = re.sub(r"(\bsize_t\b|\buintptr_t\b)", "unsigned long", file_string)
+            file_string = re.sub(r"(\bintptr_t\b|\bscalar_t__\b)", "long", file_string)
+            file_string = re.sub(r"\bbool\b", "int", file_string)
+            file_string = re.sub(r"\b(__)?inline ", "", file_string)
+            if re.search(r"#if", file_string) is None:
+                file_string = re.sub(r"__attribute__\(\(used\)\) ", "", file_string)
 
         # remove multiline comments
         file_string = re.sub(r"/\*.*?\*/", "", file_string, flags=re.DOTALL)
